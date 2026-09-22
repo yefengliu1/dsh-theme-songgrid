@@ -1,0 +1,5 @@
+# 宋律 Songgrid 主题插件 bundle patch：把本客户端插件挂载进 profile 树。
+# 安装后由 `dsh plugin --profile web add dsh-theme-songgrid` 引入，无需手写这份 patch。
+- insert:
+    - id: song-grid-theme
+      name: 'dsh-theme-songgrid'

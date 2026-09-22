@@ -1,0 +1,63 @@
+{
+  "name": "dsh-theme-songgrid",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "宋律 Songgrid —— 宋代美学 × 瑞士国际主义设计语言的 DeepSeek Harness Web 主题：宣纸/夜墨双变体、汝窑天青功能色、青绿山水背景。Not affiliated with DeepSeek.",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "assets",
+    "docs",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "dsh-theme",
+    "song-grid",
+    "chinese-typography"
+  ],
+  "homepage": "https://github.com/yefengliu1/dsh-theme-songgrid#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yefengliu1/dsh-theme-songgrid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yefengliu1/dsh-theme-songgrid/issues"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-store",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web",
+      "immediately": true
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-store": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-theme": "^0.1.5-rc.2",
+    "react": "^18.2.0"
+  }
+}

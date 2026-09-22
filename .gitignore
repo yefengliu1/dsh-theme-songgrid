@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.DS_Store
+
+# 开发期备份（不进发布包，files 已限定内容）
+*.bak-*
+*.orig-*
