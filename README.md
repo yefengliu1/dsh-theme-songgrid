@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/dsh-theme-songgrid?style=flat-square&color=3A7284)](https://www.npmjs.com/package/dsh-theme-songgrid)
 [![license](https://img.shields.io/badge/license-MIT-26221C?style=flat-square)](#license)
 [![dsh-plugin](https://img.shields.io/badge/dsh--plugin-community%20topic-9A6B50?style=flat-square)](https://github.com/topics/dsh-plugin)
-[![DSH](https://img.shields.io/badge/DSH-0.1.5--rc.2-7FB4C4?style=flat-square)](#compatibility)
+[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2-7FB4C4?style=flat-square)](#compatibility)
 
 ---
 
@@ -104,9 +104,14 @@ Then **refresh the page** and pick 「宋律 · 宣纸」/「宋律 · 夜墨」
 
 ## Compatibility
 
-- Verified on **DSH 0.1.5-rc.2** (`@deepseek-ai/dsh`)
+- Requires **DSH ≥ 0.2.0-rc.2** (`@deepseek-ai/dsh`); verified on 0.2.0-rc.2 — on 0.1.5-rc.2 install `dsh-theme-songgrid@0.1.0`
 - Implemented purely by overriding host design tokens — **no host source is patched**, no raw values
 - Not affiliated with DeepSeek
+
+### Porting notes (0.1.5-rc.2 → 0.2.0-rc.2)
+
+- `settingsScope` was removed: the theme preference scope is now `ctx.configForms.get("songgrid")` (the snapshot is still `{ status, value }`)
+- The built `lib/client.js` must register under the **package name** in `__ModuleLoader__.load({ id })` — rebuild the bundle after any rename, or the boot aborts with `duplicate factory registration`
 
 ## Development
 

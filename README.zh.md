@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/dsh-theme-songgrid?style=flat-square&color=3A7284)](https://www.npmjs.com/package/dsh-theme-songgrid)
 [![license](https://img.shields.io/badge/license-MIT-26221C?style=flat-square)](#license)
 [![dsh-plugin](https://img.shields.io/badge/dsh--plugin-community%20topic-9A6B50?style=flat-square)](https://github.com/topics/dsh-plugin)
-[![DSH](https://img.shields.io/badge/DSH-0.1.5--rc.2-7FB4C4?style=flat-square)](#兼容性)
+[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2-7FB4C4?style=flat-square)](#兼容性)
 
 ---
 
@@ -104,9 +104,14 @@ dsh plugin --profile web add dsh-theme-songgrid
 
 ## 兼容性
 
-- 验证于 **DSH 0.1.5-rc.2**（`@deepseek-ai/dsh`）
+- 需要 **DSH ≥ 0.2.0-rc.2**（`@deepseek-ai/dsh`），验证于 0.2.0-rc.2 —— 还在 0.1.5-rc.2 请装 `dsh-theme-songgrid@0.1.0`
 - 通过宿主 design token 覆盖实现，**不改宿主源码**、不写裸值
 - 与 DeepSeek 官方无隶属关系（Not affiliated with DeepSeek）
+
+### 移植笔记（0.1.5-rc.2 → 0.2.0-rc.2）
+
+- `settingsScope` 被移除：主题偏好的 scope 现在是 `ctx.configForms.get("songgrid")`（快照仍是 `{ status, value }`）
+- 构建产物 `lib/client.js` 必须按**包名**注册在 `__ModuleLoader__.load({ id })` 里 —— 任何改名后都要重建 bundle，否则启动会以 `duplicate factory registration` 中断
 
 ## 开发
 
