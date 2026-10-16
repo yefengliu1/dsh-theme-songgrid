@@ -34,7 +34,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # **必须 ≥22.12**：dsh 的依赖（commander@15 / undici@8 / execa@10 …）都要求
+          # node ≥22。在 Node 20 上它连 --version 都不打、直接静默退出 —— 踩过一次。
+          node-version: '22'
       - name: 安装依赖
         run: npm install --no-audit --no-fund
       - name: 跑测试（= theme contract）
@@ -58,7 +60,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # **必须 ≥22.12**：dsh 的依赖（commander@15 / undici@8 / execa@10 …）都要求
+          # node ≥22。在 Node 20 上它连 --version 都不打、直接静默退出 —— 踩过一次。
+          node-version: '22'
 
       - name: 装插件依赖 + Playwright + Chromium
         run: |
