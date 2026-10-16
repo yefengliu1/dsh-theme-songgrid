@@ -1,0 +1,119 @@
+# dsh-theme-songgrid 的 CI。两层：
+#   1. `test`：单元 + 契约（纯 Node，秒级）；
+#   2. `ui-smoke`：**真起一个 dsh**（独立 profile、link 本仓），用 Playwright 断言渲染事实。
+#
+# 为什么 ui-smoke 值得这么重：那批 bug（侧栏内缩不对称、选中态一帧不亮、
+# 选中/待答共用通道、卡面不透明）**没有任何一层纯 Node 测试能看见** —— 它们只在真实渲染里成立。
+#
+# 几个已经踩过的坑（别改回去）：
+#   · `--profile` 是**全局位**：`dsh --profile ci --port 3987 --no-open`。
+#     写成 `dsh web --profile ci` 会报 "too many arguments / select a profile only once"。
+#   · 不装 pnpm：profile 手工搭（package.json 的 bundles + node_modules 软链），
+#     正是 `dsh plugin add` 背后干的事，少一个依赖。
+#   · `~/.dsh/profiles/node_modules` 要指向这次安装的 node_modules，否则 profile 里的
+#     bundle 解析不到（本机之所以没这问题，是因为那份共享目录早被建好了）。
+#   · 全新 profile 必然弹「Preview Notice」，冒烟脚本自己会关掉它（dismissOverlays）。
+#   · 主题冒烟用 localStorage 驱动（夜墨/宣纸/关），不点界面 —— 免掉语言差异。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 单元 + 契约
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 安装依赖
+        run: npm install --no-audit --no-fund
+      - name: 跑测试（= theme contract）
+        run: npm test
+
+  ui-smoke:
+    name: UI 冒烟（真起 dsh + Playwright）
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 25
+    env:
+      # 钉住 dsh 版本：冒烟断言的是「这个宿主版本上的渲染事实」。
+      # 想跟新版：改这一行（会同时暴露宿主漂移，配合 tests/contract.mjs 一起看）。
+      DSH_VERSION: 0.2.0-rc.2
+      PROFILE: ci
+      PORT: '3987'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 装插件依赖 + Playwright + Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npm install -D playwright --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: 搭一个独立 profile（不用 pnpm）
+        run: |
+          set -euo pipefail
+          DSH_HOME="$HOME/.dsh"
+          mkdir -p "$DSH_HOME/profiles/$PROFILE/node_modules"
+          ln -sfn "$GITHUB_WORKSPACE" "$DSH_HOME/profiles/$PROFILE/node_modules/dsh-theme-songgrid"
+          cat > "$DSH_HOME/profiles/$PROFILE/package.json" <<JSON
+          {
+            "name": "dsh-profile-$PROFILE",
+            "private": true,
+            "dsh": {
+              "profile": {
+                "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-theme-songgrid"],
+                "patchReload": "live"
+              }
+            }
+          }
+          JSON
+
+      - name: 装 dsh 并把它的 node_modules 借给 profile
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/dsh-install"
+          mkdir -p "$WORK" && cd "$WORK"
+          npm init -y > /dev/null
+          npm install "@deepseek-ai/dsh@$DSH_VERSION" --no-audit --no-fund
+          mkdir -p "$HOME/.dsh/profiles"
+          ln -sfn "$WORK/node_modules" "$HOME/.dsh/profiles/node_modules"
+          echo "DSH_BIN=$WORK/node_modules/.bin/dsh" >> "$GITHUB_ENV"
+
+      - name: 起 dsh（后台）并等它就绪
+        run: |
+          set -euo pipefail
+          LOG="$RUNNER_TEMP/dsh.log"
+          ("$DSH_BIN" --profile "$PROFILE" --port "$PORT" --no-open > "$LOG" 2>&1 &)
+          for i in $(seq 1 90); do
+            grep -q "dsh web: http" "$LOG" && break
+            sleep 2
+          done
+          URL=$(grep -o "dsh web: http://[^ ]*" "$LOG" | tail -1 | sed 's/^dsh web: //')
+          if [ -z "$URL" ]; then echo "dsh 没起来："; tail -30 "$LOG"; exit 1; fi
+          echo "DSH_UI_URL=$URL" >> "$GITHUB_ENV"
+          echo "入口：$URL"
+
+      - name: UI 冒烟
+        run: node tests/ui-smoke.mjs
+
+      - name: 存档截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: theme-ui-smoke-screenshot
+          path: /tmp/dsh-theme-songgrid-smoke.png
+          if-no-files-found: ignore
+
+      - name: 失败时贴出 dsh 日志
+        if: failure()
+        run: tail -60 "$RUNNER_TEMP/dsh.log" || true
