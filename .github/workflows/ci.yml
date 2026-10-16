@@ -1,17 +1,21 @@
-# dsh-theme-songgrid 的 CI。两层：
-#   1. `test`：单元 + 契约（纯 Node，秒级）；
+# CI。两层：
+#   1. `test`：单元 + 契约（纯 Node，秒级；不依赖任何已安装的 dsh）；
 #   2. `ui-smoke`：**真起一个 dsh**（独立 profile、link 本仓），用 Playwright 断言渲染事实。
 #
 # 为什么 ui-smoke 值得这么重：那批 bug（侧栏内缩不对称、选中态一帧不亮、
 # 选中/待答共用通道、卡面不透明）**没有任何一层纯 Node 测试能看见** —— 它们只在真实渲染里成立。
 #
-# 几个已经踩过的坑（别改回去）：
+# 踩过的坑（都踩实了，别改回去）：
+#   · **显式 DSH_HOME**：dsh 解析 harness home 不看 $HOME（走 os.userInfo），
+#     所以 runner 上 `$HOME/.dsh/profiles/ci` 与它实际找的目录可能不是同一个 ——
+#     表现为 profile「不存在」，dsh 一行日志都不打就退出。用 DSH_HOME 钉死。
 #   · `--profile` 是**全局位**：`dsh --profile ci --port 3987 --no-open`。
-#     写成 `dsh web --profile ci` 会报 "too many arguments / select a profile only once"。
+#     写成 `dsh web --profile ci` 会报 too many arguments / select a profile only once。
 #   · 不装 pnpm：profile 手工搭（package.json 的 bundles + node_modules 软链），
 #     正是 `dsh plugin add` 背后干的事，少一个依赖。
-#   · `~/.dsh/profiles/node_modules` 要指向这次安装的 node_modules，否则 profile 里的
-#     bundle 解析不到（本机之所以没这问题，是因为那份共享目录早被建好了）。
+#   · `$DSH_HOME/profiles/node_modules` 要指向这次安装的 node_modules，否则 bundle 解析不到。
+#   · 等就绪的循环里别用 `grep -q ... && break`（set -e 下会静默整段退出）：
+#     用 if/fi + 进程存活检查 + 失败时打印日志。
 #   · 全新 profile 必然弹「Preview Notice」，冒烟脚本自己会关掉它（dismissOverlays）。
 #   · 主题冒烟用 localStorage 驱动（夜墨/宣纸/关），不点界面 —— 免掉语言差异。
 name: CI
@@ -47,6 +51,8 @@ jobs:
       DSH_VERSION: 0.2.0-rc.2
       PROFILE: ci
       PORT: '3987'
+      # 钉死 harness home —— 别让 dsh 的 home 解析（不看 $HOME）跟我们对不上。
+      DSH_HOME: ${{ runner.temp }}/dsh-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,7 +68,6 @@ jobs:
       - name: 搭一个独立 profile（不用 pnpm）
         run: |
           set -euo pipefail
-          DSH_HOME="$HOME/.dsh"
           mkdir -p "$DSH_HOME/profiles/$PROFILE/node_modules"
           ln -sfn "$GITHUB_WORKSPACE" "$DSH_HOME/profiles/$PROFILE/node_modules/dsh-theme-songgrid"
           cat > "$DSH_HOME/profiles/$PROFILE/package.json" <<JSON
@@ -77,6 +82,7 @@ jobs:
             }
           }
           JSON
+          cat "$DSH_HOME/profiles/$PROFILE/package.json"
 
       - name: 装 dsh 并把它的 node_modules 借给 profile
         run: |
@@ -85,21 +91,39 @@ jobs:
           mkdir -p "$WORK" && cd "$WORK"
           npm init -y > /dev/null
           npm install "@deepseek-ai/dsh@$DSH_VERSION" --no-audit --no-fund
-          mkdir -p "$HOME/.dsh/profiles"
-          ln -sfn "$WORK/node_modules" "$HOME/.dsh/profiles/node_modules"
+          ln -sfn "$WORK/node_modules" "$DSH_HOME/profiles/node_modules"
           echo "DSH_BIN=$WORK/node_modules/.bin/dsh" >> "$GITHUB_ENV"
+          echo "DSH_MODULES=$WORK/node_modules/@deepseek-ai" >> "$GITHUB_ENV"
+          "$WORK/node_modules/.bin/dsh" --version || true
+
+      - name: 契约（对着真实 dsh 再跑一遍：宿主契约层需要它）
+        run: npm test
 
       - name: 起 dsh（后台）并等它就绪
         run: |
-          set -euo pipefail
+          set -uo pipefail
           LOG="$RUNNER_TEMP/dsh.log"
-          ("$DSH_BIN" --profile "$PROFILE" --port "$PORT" --no-open > "$LOG" 2>&1 &)
+          setsid nohup "$DSH_BIN" --profile "$PROFILE" --port "$PORT" --no-open > "$LOG" 2>&1 &
+          sleep 2
+          URL=""
           for i in $(seq 1 90); do
-            grep -q "dsh web: http" "$LOG" && break
+            if grep -q "dsh web: http" "$LOG" 2>/dev/null; then
+              URL=$(grep -o "dsh web: http://[^ ]*" "$LOG" | tail -1 | sed 's/^dsh web: //')
+              break
+            fi
+            if ! pgrep -f "port $PORT" > /dev/null 2>&1; then
+              echo "dsh 进程提前退出（第 $i 轮）"
+              break
+            fi
             sleep 2
           done
-          URL=$(grep -o "dsh web: http://[^ ]*" "$LOG" | tail -1 | sed 's/^dsh web: //')
-          if [ -z "$URL" ]; then echo "dsh 没起来："; tail -30 "$LOG"; exit 1; fi
+          echo "----- dsh 日志（前 40 行） -----"
+          head -40 "$LOG" 2>/dev/null || echo "(没有日志)"
+          echo "-------------------------------"
+          if [ -z "$URL" ]; then
+            echo "没拿到入口地址"
+            exit 1
+          fi
           echo "DSH_UI_URL=$URL" >> "$GITHUB_ENV"
           echo "入口：$URL"
 
