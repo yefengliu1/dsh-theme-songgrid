@@ -51,8 +51,9 @@ jobs:
       DSH_VERSION: 0.2.0-rc.2
       PROFILE: ci
       PORT: '3987'
-      # 钉死 harness home —— 别让 dsh 的 home 解析（不看 $HOME）跟我们对不上。
-      DSH_HOME: ${{ runner.temp }}/dsh-home
+      # 注意：DSH_HOME **不能**写在这里 —— runner 上下文在 job 级 env 里非法，
+      # GitHub 会直接把整个 workflow 判为无效（两个 run 连 job 都没起）。
+      # 改成在下面第一个步骤里用 $RUNNER_TEMP 算出来并写进 $GITHUB_ENV。
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,6 +69,10 @@ jobs:
       - name: 搭一个独立 profile（不用 pnpm）
         run: |
           set -euo pipefail
+          # 钉死 harness home：dsh 解析 home 不看 $HOME（走 os.userInfo），
+          # 不钉就会出现「手写的 profile 目录 ≠ 它实际查找的目录」→ 报 profile 不存在、静默退出。
+          echo "DSH_HOME=$RUNNER_TEMP/dsh-home" >> "$GITHUB_ENV"
+          export DSH_HOME="$RUNNER_TEMP/dsh-home"
           mkdir -p "$DSH_HOME/profiles/$PROFILE/node_modules"
           ln -sfn "$GITHUB_WORKSPACE" "$DSH_HOME/profiles/$PROFILE/node_modules/dsh-theme-songgrid"
           cat > "$DSH_HOME/profiles/$PROFILE/package.json" <<JSON
