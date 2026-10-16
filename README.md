@@ -100,7 +100,9 @@ Three layers; two of them are **orthogonal to colour** — future palette work n
 dsh plugin --profile web add dsh-theme-songgrid
 ```
 
-Then **refresh the page** and pick 「宋律 · 宣纸」/「宋律 · 夜墨」/ follow-system under **Settings → General → Theme**. The choice persists in the `songgrid` settings namespace.
+Then **refresh the page** and pick 「宋律 · 宣纸」/「宋律 · 夜墨」/ follow-system under **Settings → General → Theme**. The choice persists in the `song-grid-theme` settings namespace (the host plugin **entry id**).
+
+> **The entry URL decides whether the choice survives across browsers.** The DSH client only writes settings back to the host when the page hostname is `localhost` / `::1` / `127.x` (`isLoopbackHostname` in `dsh-client-connection`). Opened through `dsh.localhost`, a LAN name or a reverse-proxy domain, the whole settings surface degrades to in-page `memory` — which looks like "I picked the theme, refreshed, and it was gone", and it affects the official theme preference, locale and notification settings just the same. To have the choice remembered across browsers/machines, open `http://localhost:8080/` (or `http://127.0.0.1:3080/?token=…`). Per-browser remembering works on any entry (the plugin keeps its own localStorage mirror).
 
 ## Compatibility
 

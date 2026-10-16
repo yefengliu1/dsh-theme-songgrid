@@ -100,7 +100,9 @@
 dsh plugin --profile web add dsh-theme-songgrid
 ```
 
-装好后**刷新页面**，进入 **设置 → 通用 → 主题**，选择「宋律 · 宣纸」「宋律 · 夜墨」或「跟随系统」。选择会持久化在 `songgrid` settings namespace 里。
+装好后**刷新页面**，进入 **设置 → 通用 → 主题**，选择「宋律 · 宣纸」「宋律 · 夜墨」或「跟随系统」。选择会持久化在 `song-grid-theme` settings namespace 里（= 宿主插件条目的 id）。
+
+> **入口决定能不能跨浏览器。** DSH 客户端只在页面 hostname 是 `localhost` / `::1` / `127.x` 时把设置写回宿主（`dsh-client-connection` 的 `isLoopbackHostname`）；用 `dsh.localhost`、内网域名或反向代理域名打开时，整份 settings 会降级成浏览器进程内的 `memory` —— 表现就是"选了主题，刷新又回去了"，而且**官方主题偏好、语言、通知设置也一样不落盘**。想让选择跨浏览器/跨机器记住，就用 `http://localhost:8080/`（或 `http://127.0.0.1:3080/?token=…`）打开；只想在本浏览器记住的话，用哪个入口都行（插件自己有一份 localStorage 镜像）。
 
 ## 兼容性
 
