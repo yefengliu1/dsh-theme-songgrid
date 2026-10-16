@@ -59,5 +59,9 @@
     "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-theme": "^0.2.0-rc.2",
     "react": "^18.2.0"
+  },
+  "scripts": {
+    "test": "node tests/contract.mjs",
+    "prepublishOnly": "npm test"
   }
 }
