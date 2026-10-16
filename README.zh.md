@@ -4,6 +4,7 @@
 
 **中文** ｜ [English](README.md)
 
+[![CI](https://github.com/yefengliu1/dsh-theme-songgrid/actions/workflows/ci.yml/badge.svg)](https://github.com/yefengliu1/dsh-theme-songgrid/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/dsh-theme-songgrid?style=flat-square&color=3A7284)](https://www.npmjs.com/package/dsh-theme-songgrid)
 [![license](https://img.shields.io/badge/license-MIT-26221C?style=flat-square)](#license)
 [![dsh-plugin](https://img.shields.io/badge/dsh--plugin-community%20topic-9A6B50?style=flat-square)](https://github.com/topics/dsh-plugin)
