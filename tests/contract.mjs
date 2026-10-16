@@ -124,6 +124,10 @@ section("4 选择来源（本地优先，服务端兜底，失败不静默）");
 	check("写选择时同时写 localStorage", /const writeLocal = \(value\) =>/.test(CLIENT) && /writeLocal\(localValue\)/.test(CLIENT));
 	check("恢复时本地值优先于服务端值", /const local = readLocal\(\);\s*\n\s*if \(local !== void 0\)/.test(CLIENT));
 	check("写入失败不静默（有 console.warn 分支）", (CLIENT.match(/console\.warn\("\[songgrid\]/g) ?? []).length >= 2);
+	// 回归守卫：theme/change 不得把「当前方案」回写成变体记忆 —— 否则启动时会抢占
+	// 用户记住的变体（实测：写入 xuanzhi 刷新后被写成 yemo，界面停在深色）。
+	check("theme/change 不回写变体记忆（防启动抢占）", !/writeLocal\(variant\)/.test(CLIENT));
+	check("恢复时只在「跟随系统」下才替官方偏好决定方案", /current\.preference === "system"/.test(CLIENT));
 	check("README(zh) 写清了入口要求", /localhost/.test(readFileSync(join(repo, "README.zh.md"), "utf8")));
 	check("README(en) 写清了入口要求", /localhost/.test(readFileSync(join(repo, "README.md"), "utf8")));
 }
