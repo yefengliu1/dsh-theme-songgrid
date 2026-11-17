@@ -1,8 +1,8 @@
 // 「宋律·夜墨」深色山水：远山孤舟明月。
 //
-// 与 generate-landscapes.mjs 的区别：那张 ink.svg 只是把浅色青绿山水去饱和成
-// 灰褐色（三条柔脊 + 两层几乎不可见的雾），既无月色也无水面，深色底又偏暖，
-// 于是整张背景读起来像「调暗的浅色主题」。这里按夜景重画：
+// generate-landscapes.mjs 只负责浅色那张（celadon 青绿山水：三条柔脊 + 两层雾）。
+// 深色这一档早先用的是把青绿山水去饱和成灰褐的 ink —— 既无月色也无水面，深色底又偏暖，
+// 整张背景读起来像「调暗的浅色主题」。ink 已于 2026-11-17 删除，深色槽就是这里画的：
 //   月（带光晕）→ 三层远近山影（越远越淡、冷灰）→ 水面 → 碎月水痕 → 孤舟。
 // 单色系（月白 #D8E4E6 + 墨蓝 #0B0F14）保持素石式克制；暖赭只出现在船灯与
 // 月影的最深处，作为画面唯一的暖点。
@@ -25,7 +25,7 @@ const MOON = { cx: 1490, cy: 302, r: 54, glowR: 270, glowRy: 240 };
 // 水面：山脚以下到画布底边，是月影水痕与孤舟的舞台。
 const WATER_Y = 908;
 // 孤舟：远小于月，位置错开月影水痕，靠船灯做暖点。
-const BOAT = { cx: 1150, cy: 1000, w: 78 };
+const BOAT = { cx: 1728, cy: 950, w: 104 };
 
 const f = (n) => Number(n.toFixed(1));
 
@@ -163,21 +163,26 @@ ${glitter(MOON.cx, WATER_Y + 6, 150)}
 <rect x="742" y="${WATER_Y + 138}" width="188" height="2" rx="1" fill="#C6D2D6" opacity="0.10"/>
 <rect x="1408" y="${WATER_Y + 178}" width="164" height="2" rx="1" fill="#C6D2D6" opacity="0.09"/>
 <!-- 孤舟：船体本来就是近黑，压在近黑水面上等于隐形。先在它背后铺一层被月照到的
-     水汽（原来 0.10 太淡），再用船灯与灯影把船的位置交代清楚。 -->
-<ellipse cx="${BOAT.cx}" cy="${BOAT.cy + 18}" rx="126" ry="26" fill="#E4EDF0" opacity="0.17" filter="url(#haze)"/>
-<ellipse cx="${BOAT.cx}" cy="${BOAT.cy + 10}" rx="86" ry="14" fill="#DDE9EB" opacity="0.10" filter="url(#soft)"/>
+     水汽，再用船灯与灯影把船的位置交代清楚。
+     2026-11-17：整条船放大 ~35%，船灯与灯晕加强 —— 用户反馈"看不到船在哪"。
+     船体原本 w=78/1920（4%），在 1280 宽的窗口里只有 52px，暗色船身读不出来；
+     现在 w=104，灯 r=11 + 外圈 19，灯晕半径 50/opacity 0.42。 -->
+<ellipse cx="${BOAT.cx}" cy="${BOAT.cy + 18}" rx="150" ry="30" fill="#E4EDF0" opacity="0.20" filter="url(#haze)"/>
+<ellipse cx="${BOAT.cx}" cy="${BOAT.cy + 10}" rx="104" ry="16" fill="#DDE9EB" opacity="0.12" filter="url(#soft)"/>
 <g fill="#04070A">
-  <path d="M ${BOAT.cx - BOAT.w / 2} ${BOAT.cy} Q ${BOAT.cx} ${BOAT.cy + 26} ${BOAT.cx + BOAT.w / 2} ${BOAT.cy} Z"/>
-  <rect x="${BOAT.cx - 22}" y="${BOAT.cy - 72}" width="2.6" height="72"/>
-  <path d="M ${BOAT.cx - 19} ${BOAT.cy - 68} L ${BOAT.cx - 19} ${BOAT.cy - 20} L ${BOAT.cx + 26} ${BOAT.cy - 20} Z"/>
+  <path d="M ${BOAT.cx - BOAT.w / 2} ${BOAT.cy} Q ${BOAT.cx} ${BOAT.cy + 32} ${BOAT.cx + BOAT.w / 2} ${BOAT.cy} Z"/>
+  <rect x="${BOAT.cx - 28}" y="${BOAT.cy - 92}" width="3.2" height="92"/>
+  <path d="M ${BOAT.cx - 24} ${BOAT.cy - 86} L ${BOAT.cx - 24} ${BOAT.cy - 26} L ${BOAT.cx + 34} ${BOAT.cy - 26} Z"/>
 </g>
-<ellipse cx="${BOAT.cx}" cy="${BOAT.cy + 15}" rx="56" ry="5" fill="#04070A" opacity="0.5" filter="url(#haze)"/>
-<ellipse cx="${BOAT.cx - 22}" cy="${BOAT.cy - 78}" rx="38" ry="32" fill="#C9A46A" opacity="0.30" filter="url(#haze)"/>
-<circle cx="${BOAT.cx - 22}" cy="${BOAT.cy - 78}" r="8.5" fill="#E8C489" fill-opacity="1"/>
-<circle cx="${BOAT.cx - 22}" cy="${BOAT.cy - 78}" r="15" fill="none" stroke="#D8B374" stroke-opacity="0.32" stroke-width="1.2" filter="url(#soft)"/>
-<ellipse cx="${BOAT.cx - 26}" cy="${BOAT.cy + 26}" rx="16" ry="2.6" fill="#D8B374" opacity="0.30"/>
-<ellipse cx="${BOAT.cx - 18}" cy="${BOAT.cy + 46}" rx="22" ry="2.6" fill="#C9A46A" opacity="0.20"/>
-<ellipse cx="${BOAT.cx - 30}" cy="${BOAT.cy + 70}" rx="28" ry="2.6" fill="#C9A46A" opacity="0.12"/>
+<ellipse cx="${BOAT.cx}" cy="${BOAT.cy + 18}" rx="70" ry="6" fill="#04070A" opacity="0.5" filter="url(#haze)"/>
+<!-- 灯晕：0.60 的暖色在 0.64 字床下只剩 ~36%，所以靠面积换存在感 —— 半径再放一档（66→90），
+     核心亮度与灯本身的尺寸都不动（用户选的就是这一档）。 -->
+<ellipse cx="${BOAT.cx - 28}" cy="${BOAT.cy - 100}" rx="90" ry="76" fill="#C9A46A" opacity="0.60" filter="url(#haze)"/>
+<circle cx="${BOAT.cx - 28}" cy="${BOAT.cy - 100}" r="13" fill="#F5DCA8" fill-opacity="1"/>
+<circle cx="${BOAT.cx - 28}" cy="${BOAT.cy - 100}" r="22" fill="none" stroke="#E8C489" stroke-opacity="0.55" stroke-width="1.6" filter="url(#soft)"/>
+<ellipse cx="${BOAT.cx - 30}" cy="${BOAT.cy + 30}" rx="24" ry="3.4" fill="#E8C489" opacity="0.45"/>
+<ellipse cx="${BOAT.cx - 22}" cy="${BOAT.cy + 52}" rx="26" ry="3" fill="#C9A46A" opacity="0.24"/>
+<ellipse cx="${BOAT.cx - 34}" cy="${BOAT.cy + 78}" rx="32" ry="3" fill="#C9A46A" opacity="0.15"/>
 </svg>`;
 
 mkdirSync(ASSETS, { recursive: true });
