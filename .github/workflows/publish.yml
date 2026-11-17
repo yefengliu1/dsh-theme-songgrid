@@ -1,0 +1,68 @@
+# 发布到 npmjs —— Trusted Publishing（OIDC），不使用任何 npm token。
+#
+# 为什么走这条路：
+#   · npm 2026 起停用「可绕过 2FA」的 token，本地 `npm publish` 会一律要 OTP；
+#     而账号的 2FA 是 security key，CLI 拿不到 6 位码（--otp 只吃 TOTP）。
+#   · Trusted Publishing 用 GitHub Actions 的 OIDC 身份向 npm 换一次性发布凭据，
+#     不需要 token，也不受 2FA 策略影响，并自动附 provenance。
+#
+# 一次性配置（npm 网页，仓库 owner 操作）：
+#   npmjs.com → dsh-theme-songgrid → Settings → Trusted publishing
+#   → Add trusted publisher → GitHub Actions
+#     Organization or user : yefengliu1
+#     Repository           : dsh-theme-songgrid
+#     Workflow filename    : publish.yml
+#     Environment          : 留空
+#
+# 发版流程：改 package.json 版本 → git tag vX.Y.Z → git push --tags
+#   也可在 Actions → Publish → Run workflow 手动触发（可只构建不发布）。
+
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只构建与校验，不真正发布'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write # OIDC：Trusted Publishing 必需
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24' # npm ≥ 11.5.1 才支持 OIDC 发布
+
+      - name: 校验 tag 与 package.json 版本一致
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF#refs/tags/v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag v$tag 与 package.json 的 $pkg 不一致"
+            exit 1
+          fi
+
+      - name: 安装依赖
+        run: npm install
+
+      # prepublishOnly 里已经含 build:assets + npm test，这里只为 dry-run 也跑一遍
+      - name: 构建与契约测试
+        run: npm run build:assets && npm test
+
+      - name: 发布（OIDC，无 token）
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        run: npm publish --provenance --access public
