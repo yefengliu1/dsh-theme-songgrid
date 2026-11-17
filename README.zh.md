@@ -105,9 +105,26 @@ dsh plugin --profile web add dsh-theme-songgrid
 
 > **入口决定能不能跨浏览器。** DSH 客户端只在页面 hostname 是 `localhost` / `::1` / `127.x` 时把设置写回宿主（`dsh-client-connection` 的 `isLoopbackHostname`）；用 `dsh.localhost`、内网域名或反向代理域名打开时，整份 settings 会降级成浏览器进程内的 `memory` —— 表现就是"选了主题，刷新又回去了"，而且**官方主题偏好、语言、通知设置也一样不落盘**。想让选择跨浏览器/跨机器记住，就用 `http://localhost:8080/`（或 `http://127.0.0.1:3080/?token=…`）打开；只想在本浏览器记住的话，用哪个入口都行（插件自己有一份 localStorage 镜像）。
 
+
+## 桌面版渲染约束（踩过的四条坑）
+
+背景层不是「写个 background-image」就完了。DSH Mac 桌面版（Electron，页面跑在 `dsh-app://app`）有四条硬约束，任何一条踩了都会表现成「背景不见了」或「窗口拖不动」：
+
+1. **别用宿主 CSS Modules 的哈希类名**（`pI_x6G_frame` 这种）。哈希每个构建都不同，web 版能命中、桌面版永远命中不了。用本地名子串（`[class*="_frame"]`）。
+2. **别给承载拖拽区的元素加 `background-attachment: fixed`**。它会把该元素提升成固定背景合成层，Chromium 下 `-webkit-app-region: drag` 随之失效。
+3. **别往 `body` 里塞固定定位的元素当背景层**。宿主有 `body > :not(#root) { -webkit-app-region: no-drag }`，一个盖满视口的子元素会把顶部拖拽区整块减掉。
+4. **画在 `<html>`（canvas）上也不行**：桌面版 `body` 是不透明底色，canvas 被它盖住；只让 `_frame` 透明还不够，窄窗口时布局列（`_centerCol`）自己也会画一层不透明底色。
+
+现在的做法：**`body::before` 伪元素**（`position: fixed; z-index: -1; pointer-events: none; -webkit-app-region: auto`），同时把 `_frame` 及其直接子列做透明。伪元素不是元素，不产生 `no-drag` 矩形；负 z-index 画在 body 底色之上、内容之下，所以不依赖 body 透明。
+
+另外两条与"看得见"有关的经验：
+
+- 夜墨那张图是近黑底（`#0B0F14`）、月亮接近 253 —— 动态范围太大会让"看得见"和"文字 4.5:1"直接冲突。但**别用 `contrast()` 去压**：它把颜色一起压掉，月色和船灯（整幅画唯一的暖点）会褪成灰。改成 `filter: brightness(1.15) saturate(1.35)` + 一层墨色罩（`rgba(10,14,19,0.53~0.63)` 渐变）——罩子按比例压暗所有像素，层次与色相都保留。
+- `background-size: cover` 在竖向窄窗里会把两侧（含月亮）裁掉，只剩中间一条黑。桌面版窗口常是窄的，改用 `100% 100%`。
+
 ## 兼容性
 
-- 需要 **DSH ≥ 0.2.0-rc.2**（`@deepseek-ai/dsh`），验证于 0.2.0-rc.2 —— 还在 0.1.5-rc.2 请装 `dsh-theme-songgrid@0.1.0`
+- 需要 **DSH ≥ 0.2.0-rc.2**（`@deepseek-ai/dsh`）。已验证：**0.2.1-rc.3（macOS 桌面版，页面在 `dsh-app://app`）** 与 **0.2.2-rc.1（web）** —— 还在 0.1.5-rc.2 请装 `dsh-theme-songgrid@0.1.0`
 - 通过宿主 design token 覆盖实现，**不改宿主源码**、不写裸值
 - 与 DeepSeek 官方无隶属关系（Not affiliated with DeepSeek）
 
@@ -122,7 +139,7 @@ dsh plugin --profile web add dsh-theme-songgrid
 # 本仓库结构
 lib/index.js      host 半边：注册 songgrid settings namespace
 lib/client.js     浏览器半边：主题 token + 三层 CSS + 主题选择器
-assets/           青绿山水背景（ink / ink-night / celadon）
+assets/           青绿山水背景（celadon 宣纸 / ink-night 夜墨）
 ```
 
 - **改结构层**：token 集中在 `:root`，加档位只动那一处；新样式按角色取 `var(--sg-gap-*)` / `var(--sg-radius-*)`，别写裸值

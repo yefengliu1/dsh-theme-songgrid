@@ -141,6 +141,12 @@ section("5 构建资产齐全（背景 data URI 与生成器一致）");
 	const ink = readFileSync(join(repo, "assets", "ink-night.uri.txt"), "utf8").trim();
 	check("client.js 内嵌的是 ink-night（远山孤舟明月），不是历史遗留的 ink",
 		CLIENT.includes(ink), "跑 node replace-uris.mjs 重新注入");
+	// 宣纸这一半以前没人守：改图后只同步了夜墨、漏了 celadon，测试仍是绿的。
+	const celadon = readFileSync(join(repo, "assets", "celadon.uri.txt"), "utf8").trim();
+	check("client.js 也内嵌了 celadon（青绿山水）",
+		CLIENT.includes(celadon), "跑 node replace-uris.mjs 重新注入");
+	check("assets 里不再有历史遗留的 ink（已被 ink-night 取代）",
+		!existsSync(join(repo, "assets/ink.uri.txt")) && !existsSync(join(repo, "assets/ink.svg")));
 }
 
 console.log(failures === 0 ? `\ntheme contract: 全部通过（${checks} 项）` : `\ntheme contract: ${failures}/${checks} 项失败`);

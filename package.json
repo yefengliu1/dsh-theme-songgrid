@@ -61,8 +61,9 @@
     "react": "^18.2.0"
   },
   "scripts": {
+    "build:assets": "node generate-landscapes.mjs && node generate-moonlit-night.mjs && node replace-uris.mjs",
     "test": "node tests/contract.mjs",
-    "prepublishOnly": "npm test",
+    "prepublishOnly": "npm run build:assets && npm test",
     "test:ui": "node tests/ui-smoke.mjs"
   }
 }

@@ -105,9 +105,26 @@ Then **refresh the page** and pick 「宋律 · 宣纸」/「宋律 · 夜墨」
 
 > **The entry URL decides whether the choice survives across browsers.** The DSH client only writes settings back to the host when the page hostname is `localhost` / `::1` / `127.x` (`isLoopbackHostname` in `dsh-client-connection`). Opened through `dsh.localhost`, a LAN name or a reverse-proxy domain, the whole settings surface degrades to in-page `memory` — which looks like "I picked the theme, refreshed, and it was gone", and it affects the official theme preference, locale and notification settings just the same. To have the choice remembered across browsers/machines, open `http://localhost:8080/` (or `http://127.0.0.1:3080/?token=…`). Per-browser remembering works on any entry (the plugin keeps its own localStorage mirror).
 
+
+## Desktop rendering constraints (four traps)
+
+The backdrop is not just a `background-image`. On the macOS desktop app (Electron, page at `dsh-app://app`) four constraints bite; miss one and it looks like "the background vanished" or "the window won't drag":
+
+1. **Never use host CSS-module hashes** (`pI_x6G_frame`). Hashes differ per build — they resolve on the web build and never on desktop. Match the stable local name (`[class*="_frame"]`).
+2. **Never put `background-attachment: fixed` on an element that holds a drag region** — it promotes it to a fixed-background layer and `-webkit-app-region: drag` stops working.
+3. **Never add a fixed-position child of `body` as the backdrop.** The host ships `body > :not(#root) { -webkit-app-region: no-drag }`; a full-viewport child subtracts the whole drag region.
+4. **Painting on `<html>` (canvas) also fails**: the desktop `body` is opaque and covers it, and on narrow windows the layout column (`_centerCol`) paints its own opaque background too.
+
+Current approach: a **`body::before` pseudo-element** (`position: fixed; z-index: -1; pointer-events: none; -webkit-app-region: auto`), plus transparent `_frame` and its direct columns. A pseudo-element is not an element, so it produces no `no-drag` rect, and a negative z-index paints above the body background but below content — no dependence on a transparent body.
+
+Two more lessons about visibility:
+
+- The night artwork is near-black (`#0B0F14`) with a moon near 253 — that range makes "visible" and "4.5:1 text" fight. **Do not compress with `contrast()`**: it flattens hue too, turning the moonlight and the boat lamp (the only warm accents) grey. Use `filter: brightness(1.15) saturate(1.35)` plus an ink veil (`rgba(10,14,19,0.53~0.63)` gradient): the veil scales every pixel down proportionally, keeping both structure and hue.
+- `background-size: cover` crops both sides (moon included) in a tall narrow window. Desktop windows are often narrow; use `100% 100%`.
+
 ## Compatibility
 
-- Requires **DSH ≥ 0.2.0-rc.2** (`@deepseek-ai/dsh`); verified on 0.2.0-rc.2 — on 0.1.5-rc.2 install `dsh-theme-songgrid@0.1.0`
+- Requires **DSH ≥ 0.2.0-rc.2** (`@deepseek-ai/dsh`). Verified on **0.2.1-rc.3 (macOS desktop app, page served at `dsh-app://app`)** and **0.2.2-rc.1 (web)** — on 0.1.5-rc.2 install `dsh-theme-songgrid@0.1.0`
 - Implemented purely by overriding host design tokens — **no host source is patched**, no raw values
 - Not affiliated with DeepSeek
 
@@ -121,7 +138,7 @@ Then **refresh the page** and pick 「宋律 · 宣纸」/「宋律 · 夜墨」
 ```bash
 lib/index.js     host half: registers the songgrid settings namespace
 lib/client.js    browser half: theme tokens + three CSS layers + theme picker
-assets/          landscape backgrounds (ink / ink-night / celadon)
+assets/          landscape backgrounds (celadon for paper, ink-night for night)
 ```
 
 - **Structure layer**: tokens live in `:root`; add a step there. New styles take `var(--sg-gap-*)` / `var(--sg-radius-*)` — never raw values
